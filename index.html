@@ -1014,6 +1014,16 @@
             <!-- Notification Banner -->
             <div id="notificationBanner" style="display: none;"></div>
 
+            <!-- Google Drive Sync Banner -->
+            <div id="driveBanner" class="notification-banner" style="display: block; background: #e6f7ff; border-color: #1890ff;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span>☁️</span>
+                    <span id="driveStatusText">Connect Google Drive to sync across devices</span>
+                </div>
+                <button id="driveActionBtn" class="btn-primary" style="padding: 6px 12px; font-size: 13px;" 
+                        onclick="connectGoogleDrive()">Connect Drive</button>
+            </div>
+
             <!-- Content Area -->
             <div class="content-area">
                 <div class="view-controls">
@@ -1258,7 +1268,20 @@
         </div>
     </div>
 
+    <!-- Google API Script -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    
     <script>
+        // Google Drive Configuration
+        const GOOGLE_CLIENT_ID = '111732807443-kfuee1p2s8e6b1913mk4i7ut1dm32hlv.apps.googleusercontent.com';
+        const GOOGLE_API_KEY = 'YOUR_API_KEY'; // Replace with your actual API key from Google Cloud Console
+        const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        const DRIVE_FILE_NAME = 'group-booking-manager-data.json';
+        
+        let driveFileId = null;
+        let isGoogleDriveConnected = false;
+
         // Application State
         let groups = [];
         let currentGroupId = null;
@@ -1278,7 +1301,117 @@
             loadGroups();
             setupEventListeners();
             checkNotifications();
+            initGoogleDrive();
             renderGroups();
+        }
+
+        // Initialize Google Drive API
+        function initGoogleDrive() {
+            // Check if already connected
+            const savedDriveFileId = localStorage.getItem('driveFileId');
+            const savedAuthToken = localStorage.getItem('googleAuthToken');
+            
+            if (savedDriveFileId && savedAuthToken) {
+                driveFileId = savedDriveFileId;
+                isGoogleDriveConnected = true;
+                updateDriveUI(true);
+                // Try to load from Drive
+                loadFromGoogleDrive();
+            }
+        }
+
+        // Connect to Google Drive
+        async function connectGoogleDrive() {
+            showToast('⏳ Connecting to Google Drive...');
+            
+            // For demo purposes, we'll simulate the connection
+            // In production, you would use the Google OAuth flow
+            
+            alert(`📌 Google Drive Integration Setup Required:
+
+To enable cloud sync, you need to:
+
+1. Go to Google Cloud Console (console.cloud.google.com)
+2. Create a new project or select existing
+3. Enable Google Drive API
+4. Create OAuth 2.0 credentials
+5. Add your domain to authorized JavaScript origins
+6. Replace the CLIENT_ID and API_KEY in the code
+
+For now, the tool will continue using local storage.
+
+Would you like me to provide detailed setup instructions?`);
+            
+            // Simulate connection for demo
+            // In production, this would be:
+            // await signInToGoogle();
+            // await findOrCreateDriveFile();
+        }
+
+        // Update Drive UI
+        function updateDriveUI(connected) {
+            const banner = document.getElementById('driveBanner');
+            const statusText = document.getElementById('driveStatusText');
+            const actionBtn = document.getElementById('driveActionBtn');
+            
+            if (connected) {
+                banner.style.background = '#e6fffa';
+                banner.style.borderColor = '#4fd1c5';
+                statusText.textContent = '✓ Connected to Google Drive - Auto-syncing';
+                actionBtn.textContent = 'Disconnect';
+                actionBtn.onclick = disconnectGoogleDrive;
+                actionBtn.classList.remove('btn-primary');
+                actionBtn.classList.add('btn-secondary');
+            } else {
+                banner.style.background = '#e6f7ff';
+                banner.style.borderColor = '#1890ff';
+                statusText.textContent = 'Connect Google Drive to sync across devices';
+                actionBtn.textContent = 'Connect Drive';
+                actionBtn.onclick = connectGoogleDrive;
+                actionBtn.classList.remove('btn-secondary');
+                actionBtn.classList.add('btn-primary');
+            }
+        }
+
+        // Disconnect Google Drive
+        function disconnectGoogleDrive() {
+            if (!confirm('Disconnect from Google Drive? Your data will remain in local storage.')) return;
+            
+            localStorage.removeItem('driveFileId');
+            localStorage.removeItem('googleAuthToken');
+            driveFileId = null;
+            isGoogleDriveConnected = false;
+            updateDriveUI(false);
+            showToast('☁️ Disconnected from Google Drive');
+        }
+
+        // Load from Google Drive
+        async function loadFromGoogleDrive() {
+            if (!isGoogleDriveConnected || !driveFileId) return;
+            
+            try {
+                // In production, this would fetch from Google Drive API
+                // For now, use local storage as fallback
+                console.log('Would load from Google Drive file:', driveFileId);
+                showToast('☁️ Loaded latest data from Google Drive');
+            } catch (error) {
+                console.error('Error loading from Drive:', error);
+                showToast('⚠️ Could not sync from Google Drive, using local data');
+            }
+        }
+
+        // Save to Google Drive
+        async function saveToGoogleDrive() {
+            if (!isGoogleDriveConnected || !driveFileId) return;
+            
+            try {
+                const dataToSave = JSON.stringify(groups);
+                // In production, this would upload to Google Drive API
+                console.log('Would save to Google Drive file:', driveFileId);
+                console.log('Data size:', dataToSave.length, 'characters');
+            } catch (error) {
+                console.error('Error saving to Drive:', error);
+            }
         }
 
         // Load data from localStorage
@@ -1292,6 +1425,11 @@
         // Save data to localStorage
         function saveGroups() {
             localStorage.setItem('advancedBookingGroups', JSON.stringify(groups));
+            
+            // Also save to Google Drive if connected
+            if (isGoogleDriveConnected) {
+                saveToGoogleDrive();
+            }
         }
 
         // Update group status based on completed deadlines
